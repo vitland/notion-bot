@@ -15,11 +15,38 @@ export const createBug = async (
   textBlock,
   priority,
   toWhoum,
-  fromWho
 ) => {
   let proger;
   let children = [];
   let prior;
+
+  const count = async () => {
+    const countPages = async (count, start) => {
+      if (!start) {
+        return count;
+      } else {
+        try {
+          const res = await notion.databases.query({
+            database_id: process.env.NOTION_BUGS_DB,
+            start_cursor: start,
+          });
+          return countPages(count + res.results.length, res.next_cursor);
+        } catch (err) {
+          console.log(err);
+        }
+      }
+    };
+   
+    try {
+      const res = await notion.databases.query({
+        database_id: process.env.NOTION_BUGS_DB,
+      });
+      const count = await countPages(res.results.length, res.next_cursor);
+      return count + 1;
+    } catch (error) {
+      console.log(error);
+    }
+  };
 
   if (toWhoum !== 'Пропустить') {
     proger = {
@@ -65,6 +92,7 @@ if (priority !== "Пропустить") {
       },
     });
   }
+
   return notion.pages.create({
     parent: {
       database_id: process.env.NOTION_BUGS_DB,
@@ -76,11 +104,7 @@ if (priority !== "Пропустить") {
             type: 'text',
             text: {
               content: `B${
-                (
-                  await notion.databases.query({
-                    database_id: process.env.NOTION_BUGS_DB,
-                  })
-                ).results.length + 1
+                await count()
               } ${title}`,
             },
           },
